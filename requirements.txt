@@ -10,3 +10,4 @@ googletrans
 pandas
 requests
 lxml
+woocommerce
