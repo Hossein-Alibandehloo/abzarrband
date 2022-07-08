@@ -1,7 +1,7 @@
 import streamlit as st
-import BP2
+from main import updater()
 
-bp = BP2.BP_Updater()
+updater = updater()
 
 
 # def onClickUpdate():
@@ -17,7 +17,7 @@ bp = BP2.BP_Updater()
 
 
      
-st.title('Database Updater')
+st.title('Price Updater')
 
 
 # values = st.slider(
@@ -27,29 +27,24 @@ st.title('Database Updater')
 
 @st.cache(suppress_st_warning=True)
 def onClickUpdate():
-     bp.update(starting_row, ending_row, st, page_type)
+     updater.post_prices(starting_row, ending_row, st)
 #      st.sucess('Process Done!')
 
 # st.write('Done!') 
 with st.sidebar:
-    page_type = st.sidebar.selectbox(
-    "Which would you like to update?",
-    ("Influencer", "Business page")
+    updating_type = st.sidebar.selectbox(
+    "select updating source:",
+    ("Data base", "Abzarchi")
 )
-    st.write(page_type, 'is selected.')
+    st.write(updating_type, 'is selected.')
     starting_row = st.number_input('Insert starting row number', min_value=0, help='You need to enter starting row of your database table')
     st.write('The starting row is: ', starting_row)
     
-    ending_row = st.number_input('Insert ending row number', min_value = starting_row + 1, max_value=10000)
+    ending_row = st.number_input('Insert ending row number', min_value = starting_row + 1, max_value=starting_row + 99)
     st.write('The ending row is: ', ending_row)
 
     updateButton = st.button('Update Date', on_click=onClickUpdate)
-if page_type == 'Influencer':
-     st.subheader('Influencer.')
-     st.dataframe(bp.get_data('Contact influencer'))
-elif page_type == 'Business page':
-     st.subheader("Business page.")
-     st.dataframe(bp.get_data('contact business page'))
-elif page_type == 'Telegram':
-     st.subheader("Telegram.")
-     st.dataframe(bp.get_data('Telegram'))   
+if updating_type == 'Data base':
+     st.subheader('Data base')
+     st.dataframe(updater.get_data())
+
