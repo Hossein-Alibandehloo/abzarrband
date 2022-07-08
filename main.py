@@ -63,10 +63,13 @@ class updater:
             return price_list[plc - 1] - 1000
         else:
             return buy_price + 150000
-    def post_prices(self, startRow, lastRow):
+    def post_prices(self, startRow, lastRow, st):
+        progress = st.empty()
+        
         df = self.get_data()
         batch = {'update':[]}
         for i in range(startRow, lastRow):
+            progress.markdown(f'Initial updating row is: {i}')
             torob_data = self.torob_data(df['torob link'][i])
             buy_price = df['buy price'][i]
             if len(buy_price) > 0:
