@@ -5,6 +5,8 @@ import requests
 import pandas as pd
 from time import sleep
 from lxml import html
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 
 class updater:
@@ -26,8 +28,14 @@ class updater:
         self.sheet = service.spreadsheets()
  
     def torob_data(self, url):
-      
-        req = requests.get(url, headers={'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'})
+        session = requests.Session()
+        retry = Retry(connect=3, backoff_factor=0.5)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+
+        req = session.get(url)
+#         req = requests.get(url, headers={'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'})
         page_info = req.text
         xpath = html.fromstring(page_info)
         # resp = xpath.xpath("//div[@class='jsx-1883554428 purchase-info seller-element']/a/text()")
