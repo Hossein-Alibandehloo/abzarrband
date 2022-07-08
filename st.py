@@ -1,7 +1,7 @@
 import streamlit as st
-from main import updater()
+import main
 
-updater = updater()
+updater = main.updater()
 
 
 # def onClickUpdate():
