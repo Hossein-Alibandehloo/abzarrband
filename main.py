@@ -34,7 +34,7 @@ class updater:
         session.mount('http://', adapter)
         session.mount('https://', adapter)
 
-        req = session.get(url)
+        req = session.get(url, verify=False)
 #         req = requests.get(url, headers={'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'})
         page_info = req.text
         xpath = html.fromstring(page_info)
