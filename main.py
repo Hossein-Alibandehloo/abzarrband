@@ -28,13 +28,10 @@ class updater:
         self.sheet = service.spreadsheets()
  
     def torob_data(self, url):
-        session = requests.Session()
-        retry = Retry(connect=3, backoff_factor=0.5)
-        adapter = HTTPAdapter(max_retries=retry)
-        session.mount('http://', adapter)
-        session.mount('https://', adapter)
+        with requests.Session() as s:
+            header = {'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0',}
+            req = s.get(url, headers=header)
 
-        req = session.get(url, verify=False)
 #         req = requests.get(url, headers={'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'})
         page_info = req.text
         xpath = html.fromstring(page_info)
