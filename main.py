@@ -113,3 +113,6 @@ class updater:
         df = pd.DataFrame(headless_data, columns=data[0])
         
         return df 
+updater = updater()
+dt = updater.torob_data(url="https://torob.com/p/21841e72-1ce4-4b7d-bbd6-2593f0f78d1e/%D8%A8%D8%AA%D9%86-%DA%A9%D9%86-26-%DA%A9%DB%8C%D9%84%D9%88%DB%8C%DB%8C-gtrh14001/")
+print(dt)
