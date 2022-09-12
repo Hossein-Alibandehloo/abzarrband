@@ -1,7 +1,5 @@
 from __future__ import print_function
-from abc import update_abstractmethods
-import requests,convert_numbers, random
-
+import requests, convert_numbers
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 import pandas as pd
@@ -9,6 +7,8 @@ from time import sleep
 from lxml import html
 from woocommerce import API
 from googlesearch import search
+from nltk.tokenize import sent_tokenize, word_tokenize
+
 
 
 
@@ -184,26 +184,92 @@ class updater:
         valueInputOption="USER_ENTERED",
         body={'values':data}
         ).execute()
+    def google_search(self, query):
+        try:
+            from googlesearch import search
+        except ImportError:
+            print("No module named 'google' found")
+
+        # to search
+        list = []
+        for j in search(query):
+            list.append(j.strip())
+        return(list)
     def post_abzarchi_link(self, startRow, lastRow):
         df = self.get_data()
         data = []
         for i in range(startRow -2, lastRow - 1):
             print(i + 2)
-            query = df['name'][i] + ' ابزارچی'
-            link_list = []
-            for j in search(query, tld="co.in", num=10, stop=9, pause=2):
-                if 'abzarchi.com/product/' in j:
-                    link_list.append(j.strip())
-            if len(link_list) > 0:
-                data.append([link_list[0]])
-            else:
-                data.append([''])
+            prod_model = self.model(df['product name'][i]) + ' اکتیو'
+            req_url = f'https://abzarchi.com/?s={prod_model}&post_type=product&dgwt_wcas=1'
+            prod_list = self.req("//a[@class='woocommerce-LoopProduct-link woocommerce-loop-product__link']/@href",req_url)
+            prod_url = ['']
+
+            
+            if len(prod_list) == 0:
+                prod_url = self.req("//link[@rel='canonical']/@href", req_url)
+                print(prod_url)
+            elif len(prod_list) > 0:
+                prod_url = [prod_list[0]]
+            data.append(prod_url)
+            # link_list = []
+            # for j in top_links_google:
+            #     if 'abzarchi.com/product/' in j:
+            #         link_list.append(j.strip())
+            # if len(link_list) > 0:
+            #     data.append([link_list[0]])
+            # else:
+            #     data.append([''])
         request = self.sheet.values().update(
         spreadsheetId=self.sheet_id_target,
         range="data!E{}:E{}".format(startRow, lastRow),
         valueInputOption="USER_ENTERED",
         body={'values':data}
         ).execute()
+    def req(self, xpath, url):
+        resp = requests.get(url)
+        page_inf = resp.text
+        xp = html.fromstring(page_inf)
+        resault = xp.xpath(xpath)
+        return resault
+    
+    def model(self, name):
+        persian_numbers = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']
+        for digit in persian_numbers:
+            name = name.replace(digit, str(persian_numbers.index(digit)))
+        
+        model = ''
+        name_words = word_tokenize(name)
+
+        ls = []
+        for word in name_words:
+            encoded_string = word.encode("ascii", "ignore")
+            decode_string = encoded_string.decode()
+            if len(decode_string) > 0:
+                ls.append(decode_string.strip())
+        
+        for i in name_words:
+            if i == 'مدل':
+                index_of_m = name_words.index(i)
+                index_of_first = ls.index(name_words[index_of_m + 1])
+                for j in range(index_of_first, len(ls)):
+                    model += ls[j] + " "
+                return model
+            
+        if len(ls) > 0:
+            model = ls[-1]
+        units = ['متر', 'میلی', 'وات','اینچ', 'کیلو', 'کیلوگرم', 'میلیمتر', 'سانتی', 'سانتیمتر', 'گرمی', 'اسب', 'سیلندر', 'لیتری', 'کیلویی', 'میلیمتری', 'آمپر', 'بار', '']
+        next_word = int()
+        if len(model) > 0:
+            if model in name_words:
+                length = name_words.index(model) + 1
+                if not length == len(name_words):
+                    next_word = name_words.index(model) + 1
+        if next_word > 0:
+            for word in units:
+                if word == name_words[next_word]:
+                    model = ''
+        return model
     def get_data(self):
         result = self.sheet.values().get(spreadsheetId=self.sheet_id_target, range= "data!A1:F1000").execute()
         data = result['values']
@@ -225,5 +291,7 @@ updater = updater()
 # updater.post_prices(strat_row - 2, last_row - 2)
 
 # updater.post_id(883, 993)
-updater.post_prices(817, 818)
+updater.post_abzarchi_link(678, 700)
+
+# print(len(updater.google_search('وینچ برقی')))
 # updater.post_abzarchi_link(66, 79)
