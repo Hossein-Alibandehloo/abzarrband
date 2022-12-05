@@ -1,5 +1,7 @@
 from __future__ import print_function
-import requests, convert_numbers
+
+import requests,convert_numbers, random
+
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 import pandas as pd
@@ -8,7 +10,6 @@ from lxml import html
 from woocommerce import API
 from googlesearch import search
 from nltk.tokenize import sent_tokenize, word_tokenize
-
 
 
 
@@ -45,7 +46,7 @@ class updater:
         page_info = req.text
         xpath = html.fromstring(page_info)
         # resp = xpath.xpath("//div[@class='jsx-1883554428 purchase-info seller-element']/a/text()")
-        prices = xpath.xpath("//div[@class='jsx-375537398 purchase-info seller-element']/a/text()")
+        prices = xpath.xpath("//a[contains(@class,'price seller-element')]/text()")
         sellers = xpath.xpath("//div[@class='css-1nd33m6']/a/text()")
         price_ls = []
         try:
@@ -61,10 +62,11 @@ class updater:
             if len(price_ls) > ind:
                 del price_ls[ind]
             del sellers[ind]
+        price_ls.sort()
         return {'sellers': sellers, 'price list': price_ls}
     
     def final_price(self, buy_price, price_list):
-        buy_price = int(buy_price)
+        buy_price = int(buy_price.replace(',',''))
         plc = 0
         if len(price_list) != 0:
             for i in range(len(price_list)):
@@ -78,11 +80,15 @@ class updater:
             return 0
         if plc <= len(price_list):
             if len(price_list) == 0:
-                return buy_price + 150000
+                final_price = buy_price + 150000
             else:
-                return price_list[plc - 1] - 1000
+                final_price = price_list[plc - 1] - 1000
         else:
-            return buy_price + 150000
+            final_price = buy_price + 150_000
+        
+        if final_price - buy_price <= 30_000:
+            final_price = buy_price + 50_000
+        return final_price
     def abzarchi_price(self, url):
         req = requests.get(url)
         page_info = req.text
@@ -98,9 +104,9 @@ class updater:
                 return ''
         else:
             return ''
-    def post_prices(self, startRow, lastRow):
+    def post_prices_to_google_sheet(self, startRow, lastRow):
         startRow = startRow -2
-        last_row = lastRow - 2
+        print("---------")
         df = self.get_data()
         batch = {'update':[]}
         data = []
@@ -113,34 +119,13 @@ class updater:
                 if len(buy_price) > 0:
                     final_price = self.final_price(buy_price, torob_data['price list'])
                     if final_price != 0:
-                        batch['update'].append(
-                            {
-                                'id':df['id'][i],
-                                'sale_price':'',
-                                'regular_price': final_price,
-                                'stock_status': 'instock'
-                            }
-                        )
                         data.append([final_price])
                     elif final_price == 0:
-                        batch['update'].append(
-                            {
-                            'id':df['id'][i],
-                            'sale_price':'',
-                            'stock_status': 'outofstock'
-                            }
-                        )
                         data.append([''])
                 else:
-                    batch['update'].append(
-                        {
-                            'id':df['id'][i],
-                            'sale_price':'',
-                            'stock_status': 'outofstock'
-                        }
-                    )
                     data.append([''])
             elif 'abzarchi.com' in target_link:
+                
                 price = self.abzarchi_price(target_link)
                 print(price, '        ', target_link)
                 batch['update'].append(
@@ -152,8 +137,8 @@ class updater:
                     }
                 )
                 data.append([price])
-                sleep(2)
-        request = self.sheet.values().update(
+        
+        self.sheet.values().update(
         spreadsheetId=self.sheet_id_target,
         range="data!C{}:C{}".format(startRow + 2, lastRow + 2),
         valueInputOption="USER_ENTERED",
@@ -161,6 +146,30 @@ class updater:
         ).execute()                
         print(self.wcapi.post("products/batch", batch).json()) 
         return batch
+    def post_prices_to_abzarbrand(self, startRow, lastRow):
+        batch = {'update':[]}
+        df = self.get_data()
+        for i in range(startRow - 2, lastRow - 1):
+            price = df['sell price'][i].replace(',','')
+            if len(price) > 0:
+                batch['update'].append(
+                            {
+                                'id':df['id'][i],
+                                'sale_price':'',
+                                'regular_price': price,
+                                'stock_status': 'instock'
+                            }
+                        )
+            else:
+                batch['update'].append(
+                            {
+                            'id':df['id'][i],
+                            'sale_price':'',
+                            'stock_status': 'outofstock'
+                            }
+                        )
+        print(self.wcapi.post("products/batch", batch).json())  
+                
     def post_id(self, startRow, lastRow):
         df = self.get_data()
         data = []
@@ -184,94 +193,28 @@ class updater:
         valueInputOption="USER_ENTERED",
         body={'values':data}
         ).execute()
-    def google_search(self, query):
-        try:
-            from googlesearch import search
-        except ImportError:
-            print("No module named 'google' found")
-
-        # to search
-        list = []
-        for j in search(query):
-            list.append(j.strip())
-        return(list)
     def post_abzarchi_link(self, startRow, lastRow):
         df = self.get_data()
         data = []
         for i in range(startRow -2, lastRow - 1):
             print(i + 2)
-            prod_model = self.model(df['product name'][i]) + ' اکتیو'
-            req_url = f'https://abzarchi.com/?s={prod_model}&post_type=product&dgwt_wcas=1'
-            prod_list = self.req("//a[@class='woocommerce-LoopProduct-link woocommerce-loop-product__link']/@href",req_url)
-            prod_url = ['']
-
-            
-            if len(prod_list) == 0:
-                prod_url = self.req("//link[@rel='canonical']/@href", req_url)
-                print(prod_url)
-            elif len(prod_list) > 0:
-                prod_url = [prod_list[0]]
-            data.append(prod_url)
-            # link_list = []
-            # for j in top_links_google:
-            #     if 'abzarchi.com/product/' in j:
-            #         link_list.append(j.strip())
-            # if len(link_list) > 0:
-            #     data.append([link_list[0]])
-            # else:
-            #     data.append([''])
+            query = df['name'][i] + ' ابزارچی'
+            link_list = []
+            for j in search(query, tld="co.in", num=10, stop=9, pause=2):
+                if 'abzarchi.com/product/' in j:
+                    link_list.append(j.strip())
+            if len(link_list) > 0:
+                data.append([link_list[0]])
+            else:
+                data.append([''])
         request = self.sheet.values().update(
         spreadsheetId=self.sheet_id_target,
         range="data!E{}:E{}".format(startRow, lastRow),
         valueInputOption="USER_ENTERED",
         body={'values':data}
         ).execute()
-    def req(self, xpath, url):
-        resp = requests.get(url)
-        page_inf = resp.text
-        xp = html.fromstring(page_inf)
-        resault = xp.xpath(xpath)
-        return resault
-    
-    def model(self, name):
-        persian_numbers = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']
-        for digit in persian_numbers:
-            name = name.replace(digit, str(persian_numbers.index(digit)))
-        
-        model = ''
-        name_words = word_tokenize(name)
-
-        ls = []
-        for word in name_words:
-            encoded_string = word.encode("ascii", "ignore")
-            decode_string = encoded_string.decode()
-            if len(decode_string) > 0:
-                ls.append(decode_string.strip())
-        
-        for i in name_words:
-            if i == 'مدل':
-                index_of_m = name_words.index(i)
-                index_of_first = ls.index(name_words[index_of_m + 1])
-                for j in range(index_of_first, len(ls)):
-                    model += ls[j] + " "
-                return model
-            
-        if len(ls) > 0:
-            model = ls[-1]
-        units = ['متر', 'میلی', 'وات','اینچ', 'کیلو', 'کیلوگرم', 'میلیمتر', 'سانتی', 'سانتیمتر', 'گرمی', 'اسب', 'سیلندر', 'لیتری', 'کیلویی', 'میلیمتری', 'آمپر', 'بار', '']
-        next_word = int()
-        if len(model) > 0:
-            if model in name_words:
-                length = name_words.index(model) + 1
-                if not length == len(name_words):
-                    next_word = name_words.index(model) + 1
-        if next_word > 0:
-            for word in units:
-                if word == name_words[next_word]:
-                    model = ''
-        return model
     def get_data(self):
-        result = self.sheet.values().get(spreadsheetId=self.sheet_id_target, range= "data!A1:F1000").execute()
+        result = self.sheet.values().get(spreadsheetId=self.sheet_id_target, range= "data!A1:F2000").execute()
         data = result['values']
         
         for l in data:
@@ -286,12 +229,91 @@ class updater:
         df = pd.DataFrame(headless_data, columns=data[0])
         
         return df
+    def model(self, name):
+        arabicNumbers = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
+        
+        for i in range(10):
+            name = name.replace(arabicNumbers[i], str(i))
+
+        model = ''
+        words = word_tokenize(name)
+        
+        ls = []
+        for word in words:
+            encoded_string = word.encode("ascii", "ignore")
+            decode_string = encoded_string.decode()
+            if len(decode_string) > 0:
+                ls.append(decode_string.strip())
+        
+        for i in words:
+            if i == 'مدل':
+                index_of_m = words.index(i)
+                index_of_first = ls.index(words[index_of_m + 1])
+                for j in range(index_of_first, len(ls)):
+                    if ls[j] == "(":
+                        break                    
+                    model += ls[j] + " "
+                return model
+        if len(ls) > 0:
+            for item in ls:
+                if item == "(":
+                        break
+                if len(item) > 2:
+                    model = item
+            # model = ls[-1]
+        
+        units = ['متر', 'میلی', 'وات','اینچ', 'کیلو', 'کیلوگرم', 'میلیمتر', 'سانتی', 'سانتیمتر', 'گرمی', 'اسب', 'سیلندر', 'لیتری', 'کیلویی', 'میلیمتری', 'آمپر', 'بار', '']
+        next_word = int()
+        if len(model) > 0:
+            if model in words:
+                length = words.index(model) + 1
+                if not length == len(words):
+                    next_word = words.index(model) + 1
+        if next_word > 0:
+            for word in units:
+                if word == words[next_word]:
+                    model = ''             
+        return model
+    
+    def post_model(self, startRow, lastRow):
+        df = self.get_data()
+        data = []
+        for i in range(startRow -2, lastRow - 1):
+            print(i + 2)
+            name = df['name'][i]
+            data.append([self.model(name).strip()])
+        
+        self.sheet.values().update(
+        spreadsheetId=self.sheet_id_target,
+        range="data!I{}:I{}".format(startRow, lastRow),
+        valueInputOption="USER_ENTERED",
+        body={'values':data}
+        ).execute()
+
 
 updater = updater()
-# updater.post_prices(strat_row - 2, last_row - 2)
+def google_sheet(s, e):
+    round = int((e - s) / 20)
+    for i in range(round):
+        updater.post_prices_to_google_sheet(s + 20*i,s + 20*(i+1))
+      
+def abzarbrand_price(s, e):
+    round = int((e - s) / 10)
+    for i in range(round):
+        try:
+            print('try', i)
+            updater.post_prices_to_abzarbrand(s + 10 * i, s + 10 * (i+1))
+        except:
+            pass
 
-# updater.post_id(883, 993)
-updater.post_abzarchi_link(678, 700)
+# google_sheet(920, 1210)  
 
-# print(len(updater.google_search('وینچ برقی')))
+abzarbrand_price(804, 1210)
+# print(updater.torob_data("http://torob.com/p/e324ef3e-370d-4cb8-8fbe-d82e4ebae6e0/%D8%AF%D8%B1%DB%8C%D9%84-%D8%A8%D8%AA%D9%86-%DA%A9%D9%86-%D8%B1%D9%88%D9%86%DB%8C%DA%A9%D8%B3-%D9%85%D8%AF%D9%84-2726/"))
+# updater.post_price(806 , 850)
+# print(updater.post_model(804, 1211))
+# print(updater.model("پیچ گوشتی چهارسو RH-2871 رونیکس (125×5)"))
+
+
+
 # updater.post_abzarchi_link(66, 79)
