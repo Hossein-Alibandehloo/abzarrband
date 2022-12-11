@@ -144,8 +144,8 @@ class updater:
         valueInputOption="USER_ENTERED",
         body={'values':data}
         ).execute()                
-#         print(self.wcapi.post("products/batch", batch).json()) 
-#         return batch
+        # print(self.wcapi.post("products/batch", batch).json()) 
+        # return batch
     def post_prices_to_abzarbrand(self, startRow, lastRow):
         batch = {'update':[]}
         df = self.get_data()
@@ -292,10 +292,7 @@ class updater:
 
 
 updater = updater()
-def google_sheet(s, e):
-    round = int((e - s) / 20)
-    for i in range(round):
-        updater.post_prices_to_google_sheet(s + 20*i,s + 20*(i+1))
+
       
 def abzarbrand_price(s, e):
     round = int((e - s) / 10)
@@ -306,9 +303,10 @@ def abzarbrand_price(s, e):
         except:
             pass
 
-# google_sheet(920, 1210)  
 
-abzarbrand_price(804, 1210)
+updater.post_prices_to_google_sheet(84, 112)
+
+# abzarbrand_price(4, 14)
 # print(updater.torob_data("http://torob.com/p/e324ef3e-370d-4cb8-8fbe-d82e4ebae6e0/%D8%AF%D8%B1%DB%8C%D9%84-%D8%A8%D8%AA%D9%86-%DA%A9%D9%86-%D8%B1%D9%88%D9%86%DB%8C%DA%A9%D8%B3-%D9%85%D8%AF%D9%84-2726/"))
 # updater.post_price(806 , 850)
 # print(updater.post_model(804, 1211))
