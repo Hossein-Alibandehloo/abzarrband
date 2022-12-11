@@ -144,8 +144,8 @@ class updater:
         valueInputOption="USER_ENTERED",
         body={'values':data}
         ).execute()                
-        print(self.wcapi.post("products/batch", batch).json()) 
-        return batch
+#         print(self.wcapi.post("products/batch", batch).json()) 
+#         return batch
     def post_prices_to_abzarbrand(self, startRow, lastRow):
         batch = {'update':[]}
         df = self.get_data()
