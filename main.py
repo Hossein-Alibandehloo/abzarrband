@@ -148,9 +148,12 @@ class updater:
         # return batch
     def post_prices_to_abzarbrand(self, startRow, lastRow):
         batch = {'update':[]}
+        
         df = self.get_data()
         for i in range(startRow - 2, lastRow - 1):
+
             price = df['sell price'][i].replace(',','')
+            
             if len(price) > 0:
                 batch['update'].append(
                             {
@@ -214,7 +217,7 @@ class updater:
         body={'values':data}
         ).execute()
     def get_data(self):
-        result = self.sheet.values().get(spreadsheetId=self.sheet_id_target, range= "data!A1:F2000").execute()
+        result = self.sheet.values().get(spreadsheetId=self.sheet_id_target, range= "data!A1:F5000").execute()
         data = result['values']
         
         for l in data:
@@ -304,9 +307,11 @@ def abzarbrand_price(s, e):
             pass
 
 
-updater.post_prices_to_google_sheet(84, 112)
+# updater.post_prices_to_google_sheet(517,790)
 
-# abzarbrand_price(4, 14)
+abzarbrand_price(2100,2211)
+
+
 # print(updater.torob_data("http://torob.com/p/e324ef3e-370d-4cb8-8fbe-d82e4ebae6e0/%D8%AF%D8%B1%DB%8C%D9%84-%D8%A8%D8%AA%D9%86-%DA%A9%D9%86-%D8%B1%D9%88%D9%86%DB%8C%DA%A9%D8%B3-%D9%85%D8%AF%D9%84-2726/"))
 # updater.post_price(806 , 850)
 # print(updater.post_model(804, 1211))
