@@ -137,7 +137,10 @@ class updater:
                     }
                 )
                 data.append([price])
-        
+            else:
+                data.append([''])
+
+        print(data)
         self.sheet.values().update(
         spreadsheetId=self.sheet_id_target,
         range="data!C{}:C{}".format(startRow + 2, lastRow + 2),
@@ -307,11 +310,14 @@ def abzarbrand_price(s, e):
             pass
 
 
-# updater.post_prices_to_google_sheet(517,790)
-
-abzarbrand_price(2100,2211)
 
 
+
+# abzarbrand_price(20,30)
+updater.post_prices_to_google_sheet(80, 110)
+
+
+# updater.post_id(1667, 1988)
 # print(updater.torob_data("http://torob.com/p/e324ef3e-370d-4cb8-8fbe-d82e4ebae6e0/%D8%AF%D8%B1%DB%8C%D9%84-%D8%A8%D8%AA%D9%86-%DA%A9%D9%86-%D8%B1%D9%88%D9%86%DB%8C%DA%A9%D8%B3-%D9%85%D8%AF%D9%84-2726/"))
 # updater.post_price(806 , 850)
 # print(updater.post_model(804, 1211))
